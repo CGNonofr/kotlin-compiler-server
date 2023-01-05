@@ -134,6 +134,12 @@ fun generateProperties(prefix: String = "") = """
     spring.mvc.pathmatch.matching-strategy=ant_path_matcher
 """.trimIndent()
 
+configure<SourceSetContainer> {
+    named("main") {
+        java.srcDir("src/main/kotlin")
+    }
+}
+
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
