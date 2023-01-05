@@ -75,16 +75,22 @@ allprojects {
 
 dependencies {
     kotlinDependency("junit:junit:4.13.2")
-    kotlinDependency("org.hamcrest:hamcrest:2.2")
-    kotlinDependency("com.fasterxml.jackson.core:jackson-databind:$jacksonVersionKotlinDependencyJar")
-    kotlinDependency("com.fasterxml.jackson.core:jackson-core:$jacksonVersionKotlinDependencyJar")
-    kotlinDependency("com.fasterxml.jackson.core:jackson-annotations:$jacksonVersionKotlinDependencyJar")
+    kotlinDependency("org.hamcrest:hamcrest-core:1.3")
+    kotlinDependency("org.hamcrest:hamcrest-library:1.3")
     // Kotlin libraries
     kotlinDependency("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
     kotlinDependency("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion")
     kotlinDependency("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
     kotlinDependency("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    kotlinDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4")
+    kotlinDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.5.0")
+    kotlinDependency("org.junit.jupiter:junit-jupiter-api:5.3.1")
+    kotlinDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
+    kotlinDependency("com.googlecode.json-simple:json-simple:1.1.1")
+    kotlinDependency("com.google.guava:guava:30.1.1-jre")
+    kotlinDependency("org.jmock:jmock:2.12.0")
+    kotlinDependency("org.apache.commons:commons-lang3:3.12.0")
+    kotlinDependency("mysql:mysql-connector-java:8.0.23")
+    kotlinDependency("org.postgresql:postgresql:42.2.19")
     kotlinJsDependency("org.jetbrains.kotlin:kotlin-stdlib-js:$kotlinVersion")
 
     annotationProcessor("org.springframework:spring-context-indexer")
@@ -142,8 +148,7 @@ configure<SourceSetContainer> {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "11"
+        jvmTarget = "15"
     }
     dependsOn(copyDependencies)
     dependsOn(copyJSDependencies)

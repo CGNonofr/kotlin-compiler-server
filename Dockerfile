@@ -1,4 +1,4 @@
-FROM openjdk:11.0.16-jdk as build
+FROM openjdk:17.0.2-jdk as build
 
 ENV KOTLIN_LIB=1.8.0
 ENV KOTLIN_LIB_JS=1.8.0-js
@@ -7,10 +7,11 @@ RUN mkdir -p /kotlin-compiler-server
 WORKDIR /kotlin-compiler-server
 ADD . /kotlin-compiler-server
 
+RUN microdnf install findutils
 RUN ./gradlew build -x test
 RUN mkdir -p /build/libs && (cd /build/libs;  jar -xf /kotlin-compiler-server/build/libs/kotlin-compiler-server-${KOTLIN_LIB}-SNAPSHOT.jar)
 
-FROM openjdk:11.0.16-jdk
+FROM openjdk:17.0.2-jdk
 
 RUN mkdir /kotlin-compiler-server
 WORKDIR /kotlin-compiler-server
