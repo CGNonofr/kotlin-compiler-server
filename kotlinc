@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+set -o pipefail
+ 
+dest="solution.jar"
+
+while getopts ":d:" arg; do
+  case "${arg}" in
+    d)
+      dest="$OPTARG"
+      ;;
+  esac
+done
+shift $((OPTIND-1))
+
+tmpfile=$(mktemp /tmp/kotlin.XXXXXX.jar)
+
+status_code=$(zip -q - $* | curl -w "%{http_code}" -s -H "Content-Type: application/zip, application/octet-stream" -X POST --data-binary @- http://localhost:9999/api/compiler/compile -o "$tmpfile" || echo 500)
+
+if [ "$status_code" -ne 200 -a "$status_code" -ne 400 ] ; then
+  >&2 echo "Internal error"
+  rm ${tmpfile}
+  exit 2
+else
+  if [ -t 1 ] ; then
+    unzip -p "$tmpfile" META-INF/logs-ansi.txt 1>&2
+  else
+    unzip -p "$tmpfile" META-INF/logs.txt 1>&2
+  fi
+  
+  if [ "$status_code" -eq 200 ]; then
+    cp $tmpfile "./$dest"
+    exit 0
+  else
+    rm ${tmpfile}
+    exit 1
+  fi
+fi
