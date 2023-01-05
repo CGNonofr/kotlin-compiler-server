@@ -13,6 +13,10 @@ import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.psi.KtFile
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.zip.ZipInputStream
+import java.io.BufferedReader
 
 @Component
 class KotlinProjectExecutor(
@@ -32,6 +36,13 @@ class KotlinProjectExecutor(
       val files = getFilesFrom(project, environment).map { it.kotlinFile }
       kotlinCompiler.run(files, environment, project.args)
     }.also { logExecutionResult(project, it) }
+  }
+
+  fun compile(zipInputStream: InputStream, output: OutputStream, handleAnalyseResult: (success: Boolean) -> Unit) {
+    return kotlinEnvironment.environment { environment ->
+      val files = getFilesFromZipStream(zipInputStream, environment).map { it.kotlinFile }
+      kotlinCompiler.compileOnly(files, output, environment, handleAnalyseResult)
+    }
   }
 
   fun test(project: Project): ExecutionResult {
@@ -106,5 +117,13 @@ class KotlinProjectExecutor(
 
   private fun getFilesFrom(project: Project, coreEnvironment: KotlinCoreEnvironment) = project.files.map {
     KotlinFile.from(coreEnvironment.project, it.name, it.text)
+  }
+
+  private fun getFilesFromZipStream(inputStream: InputStream, coreEnvironment: KotlinCoreEnvironment) = ZipInputStream(inputStream).use { zipInputStream ->
+    generateSequence { zipInputStream.nextEntry }
+      .filterNot { it.isDirectory }
+      .map {
+        KotlinFile.from(coreEnvironment.project, it.name, String(zipInputStream.readAllBytes()))
+      }.toList()
   }
 }

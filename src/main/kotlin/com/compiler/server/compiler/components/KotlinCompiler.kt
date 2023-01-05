@@ -28,6 +28,14 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
+import java.io.*
+import java.nio.file.*
+import java.util.zip.*
+import com.compiler.server.model.ProjectSeveriry
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer;
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocationWithRange
+import com.compiler.server.model.ErrorDescriptor
 
 @Component
 class KotlinCompiler(
@@ -44,6 +52,91 @@ class KotlinCompiler(
   }
 
   class Compiled(val files: Map<String, ByteArray> = emptyMap(), val mainClass: String? = null)
+
+  private fun zip(compilation: Compiled?, ansiLogs: String, plainLogs: String, outputStream: OutputStream) {
+    ZipOutputStream(outputStream).use { zos ->
+      if (compilation != null) {
+        compilation.files.forEach { (name, bytes) ->
+          val entry = ZipEntry(name)
+          zos.putNextEntry(entry)
+          zos.write(bytes)
+        }
+        
+        val manifestEntry = ZipEntry("META-INF/MANIFEST.MF")
+        zos.putNextEntry(manifestEntry)
+        zos.write(
+  """Manifest-Version: 1.0
+  Main-Class: %s
+  """.format(compilation.mainClass).toByteArray(Charsets.UTF_8)
+        )
+      }
+
+      val logsEntry = ZipEntry("META-INF/logs.txt")
+      zos.putNextEntry(logsEntry)
+      zos.write(plainLogs.toByteArray(Charsets.UTF_8))
+
+      val ansiLogsEntry = ZipEntry("META-INF/logs-ansi.txt")
+      zos.putNextEntry(ansiLogsEntry)
+      zos.write(ansiLogs.toByteArray(Charsets.UTF_8))
+    }
+  }
+
+  fun renderError (file: KtFile, error: ErrorDescriptor, ansi: Boolean): String {
+    val severity = when (error.severity) {
+      ProjectSeveriry.ERROR -> CompilerMessageSeverity.ERROR
+      ProjectSeveriry.INFO -> CompilerMessageSeverity.INFO
+      ProjectSeveriry.WARNING -> CompilerMessageSeverity.WARNING
+      else -> CompilerMessageSeverity.WARNING
+    }
+    val line = if (file.viewProvider.document != null) (file.text.substring(
+      startIndex = file.viewProvider.document!!.getLineStartOffset(error.interval.start.line),
+      endIndex = file.viewProvider.document!!.getLineEndOffset(error.interval.start.line)
+    )) else null
+    return PlainTextMessageRenderer(ansi).render(
+      severity,
+      error.message,
+      CompilerMessageLocationWithRange.create(
+        file.name,
+        error.interval.start.line + 1,
+        error.interval.start.ch + 1,
+        error.interval.end.line + 1,
+        error.interval.end.ch + 1,
+        line
+      )
+    )
+  }
+
+  fun renderFileErrors (file: KtFile, errors: List<ErrorDescriptor>, errorOnly: Boolean, ansi: Boolean): List<String> {
+    return errors.filter { it.severity == ProjectSeveriry.ERROR || !errorOnly }.map<ErrorDescriptor, String> {
+      renderError(file, it, ansi) + "\n"
+    }
+  }
+
+  fun renderErrors (files: List<KtFile>, errors: Map<String, List<ErrorDescriptor>>, ansi: Boolean): String {
+    val success = errorAnalyzer.isOnlyWarnings(errors)
+    return files.flatMap<KtFile, String> {
+      renderFileErrors(it, errors.get(it.name).orEmpty(), !success, ansi)
+    }.joinToString(separator = "") ?: ""
+  }
+
+  fun compileOnly(files: List<KtFile>, output: OutputStream, coreEnvironment: KotlinCoreEnvironment, handleAnalyseResult: (success: Boolean) -> Unit) {
+    val (errors, analysis) = errorAnalyzer.errorsFrom(
+      files = files,
+      coreEnvironment = coreEnvironment,
+      isJs = false
+    )
+    val success = errorAnalyzer.isOnlyWarnings(errors)
+    val ansiLogs = renderErrors(files, errors, true)
+    val plainLogs = renderErrors(files, errors, false)
+
+    handleAnalyseResult.invoke(success)
+    if (success) {
+      val compilation = compile(files, analysis, coreEnvironment)
+      zip(compilation, ansiLogs, plainLogs, output)
+    } else {
+      zip(null, ansiLogs, plainLogs, output)
+    }
+  }
 
   fun run(files: List<KtFile>, coreEnvironment: KotlinCoreEnvironment, args: String): ExecutionResult {
     return execute(files, coreEnvironment) { output, compiled ->

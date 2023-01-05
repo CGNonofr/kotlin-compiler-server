@@ -7,10 +7,20 @@ import com.compiler.server.model.TranslationJSResult
 import com.compiler.server.model.bean.VersionInfo
 import com.compiler.server.service.KotlinProjectExecutor
 import org.springframework.web.bind.annotation.*
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
 @RestController
 @RequestMapping(value = ["/api/compiler", "/api/**/compiler"])
 class CompilerRestController(private val kotlinProjectExecutor: KotlinProjectExecutor) {
+  @PostMapping("/compile")
+  fun compileKotlinProjectEndpoint(request: HttpServletRequest, response: HttpServletResponse) {
+    response.setContentType("application/java-archive")
+    kotlinProjectExecutor.compile(request.getInputStream(), response.getOutputStream()){ success ->
+      response.setStatus(if (success) 200 else 400)
+    }
+  }
+
   @PostMapping("/run")
   fun executeKotlinProjectEndpoint(@RequestBody project: Project): ExecutionResult {
     return kotlinProjectExecutor.run(project)
