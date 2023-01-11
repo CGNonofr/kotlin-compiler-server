@@ -148,7 +148,7 @@ configure<SourceSetContainer> {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions {
-        jvmTarget = "15"
+        jvmTarget = "11"
     }
     dependsOn(copyDependencies)
     dependsOn(copyJSDependencies)
