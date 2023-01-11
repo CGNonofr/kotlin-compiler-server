@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <springProfile name="!prod">
-        <property name="LOGS" value="./logs"/>
+        <property name="LOGS" value="/tmp/logs"/>
         <appender name="Console"
                   class="ch.qos.logback.core.ConsoleAppender">
             <layout class="ch.qos.logback.classic.PatternLayout">
@@ -45,4 +45,3 @@
         </root>
     </springProfile>
 </configuration>
-
